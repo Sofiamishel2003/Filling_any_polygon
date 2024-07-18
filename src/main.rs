@@ -32,7 +32,7 @@ fn draw_polygon(framebuffer: &mut Framebuffer, vertices: &[Vec3], line_color: Co
 }
 
 /// Rellena un polígono usando el algoritmo de escaneo de líneas.
-fn fill_polygon(framebuffer: &mut Framebuffer, vertices: &[Vec3], fill_color: Color) {
+fn fill_polygon(framebuffer: &mut Framebuffer, vertices: &[Vec3], fill_color: Color, holes: &[Vec<Vec3>]) {
     if vertices.len() < 3 {
         println!("Se necesitan al menos 3 vértices para llenar un polígono");
         return;
@@ -45,6 +45,15 @@ fn fill_polygon(framebuffer: &mut Framebuffer, vertices: &[Vec3], fill_color: Co
         let start = vertices[i];
         let end = vertices[next];
         edges.push((start.x as isize, start.y as isize, end.x as isize, end.y as isize));
+    }
+
+    for hole in holes {
+        for i in 0..hole.len() {
+            let next = (i + 1) % hole.len();
+            let start = hole[i];
+            let end = hole[next];
+            edges.push((start.x as isize, start.y as isize, end.x as isize, end.y as isize));
+        }
     }
 
     let min_y = vertices.iter().map(|v| v.y as isize).min().unwrap();
@@ -62,9 +71,13 @@ fn fill_polygon(framebuffer: &mut Framebuffer, vertices: &[Vec3], fill_color: Co
         }
         intersections.sort();
 
-        for i in (0..intersections.len()).step_by(2) {
+        let mut fill = true;
+        for i in 0..intersections.len() {
             if i + 1 < intersections.len() {
-                framebuffer.line(intersections[i], y, intersections[i + 1], y);
+                if fill {
+                    framebuffer.line(intersections[i], y, intersections[i + 1], y);
+                }
+                fill = !fill;
             }
         }
     }
@@ -72,11 +85,11 @@ fn fill_polygon(framebuffer: &mut Framebuffer, vertices: &[Vec3], fill_color: Co
 
 fn main() {
     let width = 800;
-    let height = 600;
+    let height = 430;
     let mut framebuffer = Framebuffer::new(width, height);
 
     // Limpia el framebuffer con un fondo blanco
-    framebuffer.set_background_color(0xFFFFFF);
+    framebuffer.set_background_color(0xFFFEF5E7);
     framebuffer.clear();
 
     // Define los vértices del primer polígono
@@ -108,6 +121,36 @@ fn main() {
         Vec3::new(436.0, 249.0, 0.0),
     ];
 
+    // Define los vértices del cuarto polígono
+    let vertices4 = vec![
+        Vec3::new(413.0, 177.0, 0.0),
+        Vec3::new(448.0, 159.0, 0.0),
+        Vec3::new(502.0, 88.0, 0.0),
+        Vec3::new(553.0, 53.0, 0.0),
+        Vec3::new(535.0, 36.0, 0.0),
+        Vec3::new(676.0, 37.0, 0.0),
+        Vec3::new(660.0, 52.0, 0.0),
+        Vec3::new(750.0, 145.0, 0.0),
+        Vec3::new(761.0, 179.0, 0.0),
+        Vec3::new(672.0, 192.0, 0.0),
+        Vec3::new(659.0, 214.0, 0.0),
+        Vec3::new(615.0, 214.0, 0.0),
+        Vec3::new(632.0, 230.0, 0.0),
+        Vec3::new(580.0, 230.0, 0.0),
+        Vec3::new(597.0, 215.0, 0.0),
+        Vec3::new(552.0, 214.0, 0.0),
+        Vec3::new(517.0, 144.0, 0.0),
+        Vec3::new(466.0, 180.0, 0.0),
+    ];
+
+    // Define los vértices del quinto polígono (agujero dentro del cuarto polígono)
+    let vertices5 = vec![
+        Vec3::new(682.0, 175.0, 0.0),
+        Vec3::new(708.0, 120.0, 0.0),
+        Vec3::new(735.0, 148.0, 0.0),
+        Vec3::new(739.0, 170.0, 0.0),
+    ];
+
     // Define los colores de línea y relleno para el primer polígono
     let line_color1 = Color::new(255, 255, 255); // Blanco
     let fill_color1 = Color::new(255, 255, 0);  // Amarillo
@@ -120,17 +163,25 @@ fn main() {
     let line_color3 = Color::new(255, 255, 255); // Blanco
     let fill_color3 = Color::new(255, 0, 0);    // Rojo
 
+    // Define los colores de línea y relleno para el cuarto polígono
+    let line_color4 = Color::new(255, 255, 255); // Blanco
+    let fill_color4 = Color::new(0, 255, 0);    // Verde
+
     // Dibuja el primer polígono
     draw_polygon(&mut framebuffer, &vertices1, line_color1);
-    fill_polygon(&mut framebuffer, &vertices1, fill_color1);
+    fill_polygon(&mut framebuffer, &vertices1, fill_color1, &[]);
 
     // Dibuja el segundo polígono
     draw_polygon(&mut framebuffer, &vertices2, line_color2);
-    fill_polygon(&mut framebuffer, &vertices2, fill_color2);
+    fill_polygon(&mut framebuffer, &vertices2, fill_color2, &[]);
 
     // Dibuja el tercer polígono
     draw_polygon(&mut framebuffer, &vertices3, line_color3);
-    fill_polygon(&mut framebuffer, &vertices3, fill_color3);
+    fill_polygon(&mut framebuffer, &vertices3, fill_color3, &[]);
+
+    // Dibuja el cuarto polígono con el quinto como agujero
+    draw_polygon(&mut framebuffer, &vertices4, line_color4);
+    fill_polygon(&mut framebuffer, &vertices4, fill_color4, &[vertices5.clone()]);
 
     // Verifica el color de un punto en el primer polígono
     if let Some(color) = framebuffer.get_point_color(200, 365) {
